@@ -169,7 +169,7 @@ describe('접근 제어 (RLS)', () => {
     await addItem(A)
     expect((await asUser(db, B, 'select * from items')).rows.length).toBe(0)
     expect((await asUser(db, B, 'select * from cards')).rows.length).toBe(0)
-    expect((await asUser(db, A, 'select * from cards')).rows.length).toBe(1)
+    expect((await asUser(db, A, 'select * from cards')).rows.length).toBe(2) // 양방향 카드 2장
   })
 
   it('브라우저 사용자는 카드 직접 수정·apply_review 호출 불가', async () => {

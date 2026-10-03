@@ -128,4 +128,34 @@ describe('오늘 학습 목록', () => {
     await db.query('update collections set is_active=false where id=$1', [r.collection_id])
     expect((await queue(A)).length).toBe(0)
   })
+
+  it('양방향: 새 단어는 영→한부터, 한→영은 다음 날 (한도에 포함 안 됨)', async () => {
+    await importRows(A, rows(20))
+    const q1 = await queue(A)
+    const pt = async (id: string) => (await db.query<any>('select prompt_type from cards where id=$1', [id])).rows[0].prompt_type
+    expect(await pt(q1[0].card_id)).toBe('expression_to_meaning')
+    await review(A, q1[0].card_id) // w1 시작
+    // 같은 날: w1의 한→영 카드는 아직 안 나옴
+    const later = new Date(T.getTime() + 11 * 60_000)
+    const sameDay = await queue(A, later)
+    for (const x of sameDay) expect(await expr(x.card_id) === 'w1' && (await pt(x.card_id)) === 'meaning_to_expression').toBe(false)
+    // 다음 날: 한→영 카드가 신규로 나오고, 신규 단어 한도 10은 그대로
+    const tomorrow = new Date(T.getTime() + 86_400_000)
+    const next = await queue(A, tomorrow)
+    const kinds = await Promise.all(next.filter((x: any) => x.kind === 'new').map(async (x: any) => [await expr(x.card_id), await pt(x.card_id)]))
+    expect(kinds).toContainEqual(['w1', 'meaning_to_expression'])
+    expect(kinds.filter(([, p]) => p === 'expression_to_meaning').length).toBe(10)
+    const s = (await asUser<any>(db, A, 'select today_summary($1) as s', [T.toISOString()])).rows[0].s
+    expect(s.new_learned_today).toBe(1)
+    expect(s.unlearned_total).toBe(19)
+  })
+
+  it('방향 설정: 한→영만이면 한→영 카드만 신규로', async () => {
+    await importRows(A, rows(5))
+    await asUser(db, A, `select update_my_settings(10, 3, 0.9, 'meaning_to_expression')`)
+    const q = await queue(A)
+    const pts = await Promise.all(q.map(async (x: any) => (await db.query<any>('select prompt_type from cards where id=$1', [x.card_id])).rows[0].prompt_type))
+    expect(new Set(pts)).toEqual(new Set(['meaning_to_expression']))
+    expect(q.length).toBe(5)
+  })
 })

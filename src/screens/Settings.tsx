@@ -48,12 +48,20 @@ export function Settings({ onDone }: { onDone: () => void }) {
     <section className="stack">
       <h2 className="title">설정</h2>
       <label>
-        하루 신규 학습량
+        하루 신규 단어 수
         <input type="number" inputMode="numeric" min={0} max={500} value={s.daily_new_limit} onChange={num('daily_new_limit')} />
       </label>
       <label>
         그중 ‘내 표현’ 우선 배정 최대
         <input type="number" inputMode="numeric" min={0} max={500} value={s.personal_new_limit} onChange={num('personal_new_limit')} />
+      </label>
+      <label>
+        학습 방향
+        <select value={s.directions} onChange={(e) => setS({ ...s, directions: e.target.value as S['directions'] })}>
+          <option value="both">둘 다 (영어→뜻 먼저, 다음 날부터 뜻→영어)</option>
+          <option value="expression_to_meaning">영어 보고 뜻 맞추기만</option>
+          <option value="meaning_to_expression">뜻 보고 영어 맞추기만</option>
+        </select>
       </label>
       <label>
         목표 회상률 ({Math.round(s.desired_retention * 100)}%)

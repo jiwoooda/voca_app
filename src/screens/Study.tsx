@@ -121,11 +121,21 @@ export function Study({ firstCardId, extra = 0, onExit }: { firstCardId?: string
 
       {card ? (
         <div className="card">
-          <p className="tag">{card.introduced_at ? '복습' : '새 표현'}</p>
-          <p className="prompt">{card.items.meaning}</p>
+          <p className="tag">
+            {card.introduced_at ? '복습' : '새 카드'} · {card.prompt_type === 'expression_to_meaning' ? '영어 → 뜻' : '뜻 → 영어'}
+          </p>
+          {card.prompt_type === 'expression_to_meaning' ? (
+            <p className="expression">{card.items.expression}</p>
+          ) : (
+            <p className="prompt">{card.items.meaning}</p>
+          )}
           {revealed ? (
             <div className="answer">
-              <p className="expression">{card.items.expression}</p>
+              {card.prompt_type === 'expression_to_meaning' ? (
+                <p className="prompt">{card.items.meaning}</p>
+              ) : (
+                <p className="expression">{card.items.expression}</p>
+              )}
               {card.items.example && <p className="example">{card.items.example}</p>}
               {card.items.example_translation && <p className="muted">{card.items.example_translation}</p>}
               {card.items.note && <p className="note">{card.items.note}</p>}

@@ -16,6 +16,7 @@ export interface StudyCard {
   state: number
   due_at: string
   introduced_at: string | null
+  prompt_type: 'meaning_to_expression' | 'expression_to_meaning'
   items: Item
 }
 
@@ -85,7 +86,7 @@ export async function addPersonalItem(requestId: string, v: NewItem): Promise<st
   ) as string
 }
 
-const CARD_SELECT = 'id, version, state, due_at, introduced_at, items(id, expression, meaning, example, example_translation, note, source)'
+const CARD_SELECT = 'id, version, state, due_at, introduced_at, prompt_type, items(id, expression, meaning, example, example_translation, note, source)'
 
 /**
  * 오늘 학습 목록 (서버 계산): 기한이 된 복습 → 신규(개인 표현 우선, 일일 한도 내).
@@ -192,10 +193,11 @@ export interface Settings {
   daily_new_limit: number
   personal_new_limit: number
   desired_retention: number
+  directions: 'both' | 'expression_to_meaning' | 'meaning_to_expression'
 }
 
 export async function getSettings(): Promise<Settings> {
-  const s = check(await supabase.from('user_settings').select('daily_new_limit, personal_new_limit, desired_retention').single()) as Settings
+  const s = check(await supabase.from('user_settings').select('daily_new_limit, personal_new_limit, desired_retention, directions').single()) as Settings
   return { ...s, desired_retention: Number(s.desired_retention) }
 }
 
@@ -205,6 +207,7 @@ export async function saveSettings(s: Settings) {
       p_daily_new_limit: s.daily_new_limit,
       p_personal_new_limit: s.personal_new_limit,
       p_desired_retention: s.desired_retention,
+      p_directions: s.directions,
     }),
   )
 }
