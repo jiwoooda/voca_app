@@ -114,6 +114,8 @@ create policy own_select on public.review_events for select to authenticated usi
 
 revoke all on public.user_settings, public.collections, public.items, public.cards, public.review_events from anon, authenticated;
 grant select on public.user_settings, public.collections, public.items, public.cards, public.review_events to authenticated;
+-- Edge Function(service_role)은 카드·설정 조회에 필요. '새 테이블 자동 노출'을 꺼도 동작하도록 명시.
+grant select on public.user_settings, public.collections, public.items, public.cards, public.review_events to service_role;
 
 -- ───────────────────────── 공통 ─────────────────────────
 

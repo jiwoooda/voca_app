@@ -20,7 +20,6 @@ export async function createDb() {
   const db = new PGlite({ extensions: { pgcrypto } })
   await db.exec(SUPABASE_MOCK)
   await db.exec(readFileSync(new URL('../supabase/migrations/20261003000000_init.sql', import.meta.url), 'utf8'))
-  await db.exec(`grant select, insert, update, delete on all tables in schema public to service_role;`)
   return db
 }
 
