@@ -2,7 +2,7 @@
 // 실제 마이그레이션 SQL을 그대로 실행해 DB 함수·RLS를 검증한다.
 import { PGlite } from '@electric-sql/pglite'
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto'
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import type { ReviewDb } from '../supabase/functions/_shared/review-handler.ts'
 
 const SUPABASE_MOCK = `
@@ -19,7 +19,10 @@ grant execute on function auth.uid() to anon, authenticated, service_role;
 export async function createDb() {
   const db = new PGlite({ extensions: { pgcrypto } })
   await db.exec(SUPABASE_MOCK)
-  await db.exec(readFileSync(new URL('../supabase/migrations/20261003000000_init.sql', import.meta.url), 'utf8'))
+  const dir = new URL('../supabase/migrations/', import.meta.url)
+  for (const f of readdirSync(dir).filter((f) => f.endsWith('.sql')).sort()) {
+    await db.exec(readFileSync(new URL(f, dir), 'utf8'))
+  }
   return db
 }
 

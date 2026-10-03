@@ -6,8 +6,9 @@ import { Login } from './screens/Login'
 import { Today } from './screens/Today'
 import { AddItem } from './screens/AddItem'
 import { Study } from './screens/Study'
+import { Import } from './screens/Import'
 
-type View = { name: 'today' } | { name: 'add' } | { name: 'study'; firstCardId?: string }
+type View = { name: 'today' } | { name: 'add' } | { name: 'import' } | { name: 'study'; firstCardId?: string; extra?: number }
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -51,7 +52,11 @@ export default function App() {
         </button>
       </header>
       {view.name === 'today' && (
-        <Today onStudy={() => setView({ name: 'study' })} onAdd={() => setView({ name: 'add' })} />
+        <Today
+          onStudy={(extra) => setView({ name: 'study', extra })}
+          onAdd={() => setView({ name: 'add' })}
+          onImport={() => setView({ name: 'import' })}
+        />
       )}
       {view.name === 'add' && (
         <AddItem
@@ -59,7 +64,10 @@ export default function App() {
           onStudyNow={(id) => setView({ name: 'study', firstCardId: id })}
         />
       )}
-      {view.name === 'study' && <Study firstCardId={view.firstCardId} onExit={() => setView({ name: 'today' })} />}
+      {view.name === 'import' && <Import onDone={() => setView({ name: 'today' })} />}
+      {view.name === 'study' && (
+        <Study firstCardId={view.firstCardId} extra={view.extra} onExit={() => setView({ name: 'today' })} />
+      )}
     </main>
   )
 }

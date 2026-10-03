@@ -100,3 +100,10 @@ button:disabled { opacity: 0.5; cursor: default; }
 .notice ul { margin: 8px 0; padding-left: 18px; }
 .notice.error { background: var(--danger-bg); }
 .notice.ok { background: var(--ok-bg); }
+
+.title { margin: 0; font-size: 1.2rem; }
+.stat .num small { font-size: 1rem; font-weight: 500; color: var(--muted); }
+.file input { padding: 10px; }
+code { font-size: 0.8rem; background: var(--note-bg); padding: 1px 4px; border-radius: 4px; overflow-wrap: anywhere; }
+details summary { cursor: pointer; font-weight: 600; }
+.notice .link { min-height: 0; padding: 0; font: inherit; color: var(--accent); }

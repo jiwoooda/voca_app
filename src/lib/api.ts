@@ -25,6 +25,8 @@ export interface Summary {
   new_learned_today: number
   unlearned_total: number
   next_due_at: string | null
+  daily_new_limit: number
+  new_paused_today: boolean
 }
 
 export class ApiError extends Error {
@@ -86,25 +88,55 @@ export async function addPersonalItem(requestId: string, v: NewItem): Promise<st
 const CARD_SELECT = 'id, version, state, due_at, introduced_at, items(id, expression, meaning, example, example_translation, note, source)'
 
 /**
- * 1단계 학습 목록: 기한이 된 복습 → 미학습 카드 순.
- * (일일 신규 한도·개인 표현 배정은 2단계에서 서버 함수로 옮긴다.)
+ * 오늘 학습 목록 (서버 계산): 기한이 된 복습 → 신규(개인 표현 우선, 일일 한도 내).
+ * extra: 한도 도달 후 사용자가 직접 고른 추가 신규 수. firstCardId: '지금 학습'으로 고른 카드.
  */
-export async function loadQueue(firstCardId?: string): Promise<StudyCard[]> {
-  const now = new Date().toISOString()
-  const due = check(
-    await supabase.from('cards').select(CARD_SELECT).not('introduced_at', 'is', null).is('suspended_at', null)
-      .lte('due_at', now).order('due_at').limit(200),
-  ) as unknown as StudyCard[]
-  const fresh = check(
-    await supabase.from('cards').select(CARD_SELECT).is('introduced_at', null).is('suspended_at', null)
-      .order('created_at').limit(50),
-  ) as unknown as StudyCard[]
-  let queue = [...due, ...fresh]
-  if (firstCardId) {
-    const first = queue.find((c) => c.id === firstCardId)
-    if (first) queue = [first, ...queue.filter((c) => c.id !== firstCardId)]
+export async function loadQueue(firstCardId?: string, extra = 0): Promise<StudyCard[]> {
+  const ids = (check(await supabase.rpc('get_study_queue', { p_extra: extra })) as { card_id: string }[]).map(
+    (r) => r.card_id,
+  )
+  if (firstCardId && !ids.includes(firstCardId)) ids.unshift(firstCardId)
+  else if (firstCardId) ids.splice(0, 0, ...ids.splice(ids.indexOf(firstCardId), 1))
+  const cards: StudyCard[] = []
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100)
+    const rows = check(await supabase.from('cards').select(CARD_SELECT).in('id', chunk)) as unknown as StudyCard[]
+    const byId = new Map(rows.map((r) => [r.id, r]))
+    for (const id of chunk) {
+      const c = byId.get(id)
+      // '지금 학습'으로 고른 카드가 이미 학습된 경우 등은 제외
+      if (c && !(id === firstCardId && c.introduced_at && new Date(c.due_at) > new Date())) cards.push(c)
+    }
   }
-  return queue
+  return cards
+}
+
+export async function setNewPausedToday(paused: boolean) {
+  check(await supabase.rpc('set_new_paused_today', { p_paused: paused }))
+}
+
+export async function findExistingDuplicates(expressions: string[]) {
+  const out: { normalized: string; expression: string; meaning: string; collection_name: string }[] = []
+  for (let i = 0; i < expressions.length; i += 500) {
+    const part = check(
+      await supabase.rpc('find_existing_duplicates', { p_expressions: expressions.slice(i, i + 500) }),
+    ) as typeof out
+    out.push(...part)
+  }
+  return out
+}
+
+export interface ImportResult {
+  collection_id: string
+  inserted: number
+  errors: { row: number; reason: string }[]
+  duplicate_request?: boolean
+}
+
+export async function importItems(requestId: string, collectionName: string, rows: unknown[]): Promise<ImportResult> {
+  return check(
+    await supabase.rpc('import_items', { p_request_id: requestId, p_collection_name: collectionName, p_rows: rows }),
+  ) as ImportResult
 }
 
 export async function getCard(id: string): Promise<StudyCard> {

@@ -9,7 +9,7 @@ const RATINGS = [
   { value: 4, label: '쉽게 기억', cls: 'easy' },
 ] as const
 
-export function Study({ firstCardId, onExit }: { firstCardId?: string; onExit: () => void }) {
+export function Study({ firstCardId, extra = 0, onExit }: { firstCardId?: string; extra?: number; onExit: () => void }) {
   const online = useOnline()
   const [queue, setQueue] = useState<StudyCard[] | null>(null)
   const [revealed, setRevealed] = useState(false)
@@ -23,14 +23,14 @@ export function Study({ firstCardId, onExit }: { firstCardId?: string; onExit: (
 
   const reload = useCallback(async (first?: string) => {
     try {
-      const q = await loadQueue(first)
+      const q = await loadQueue(first, extra)
       setQueue(q)
       if (q.length === 0) setNextDue((await getSummary()).next_due_at)
     } catch (e) {
       setError(`불러오지 못했어요: ${(e as Error).message}`)
       setQueue((prev) => prev ?? [])
     }
-  }, [])
+  }, [extra])
 
   useEffect(() => {
     reload(firstCardId)
