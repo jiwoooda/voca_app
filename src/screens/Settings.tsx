@@ -56,14 +56,6 @@ export function Settings({ onDone }: { onDone: () => void }) {
         <input type="number" inputMode="numeric" min={0} max={500} value={s.personal_new_limit} onChange={num('personal_new_limit')} />
       </label>
       <label>
-        학습 방향
-        <select value={s.directions} onChange={(e) => setS({ ...s, directions: e.target.value as S['directions'] })}>
-          <option value="both">둘 다 (영어→뜻 먼저, 다음 날부터 뜻→영어)</option>
-          <option value="expression_to_meaning">영어 보고 뜻 맞추기만</option>
-          <option value="meaning_to_expression">뜻 보고 영어 맞추기만</option>
-        </select>
-      </label>
-      <label>
         목표 회상률 ({Math.round(s.desired_retention * 100)}%)
         <input type="range" min={0.7} max={0.97} step={0.01} value={s.desired_retention} onChange={num('desired_retention')} />
       </label>

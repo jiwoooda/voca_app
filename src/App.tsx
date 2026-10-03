@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { configured, supabase } from './lib/supabase'
-import { ensureSetup } from './lib/api'
+import { ensureSetup, type StudyMode } from './lib/api'
 import { Login } from './screens/Login'
 import { Today } from './screens/Today'
 import { AddItem } from './screens/AddItem'
@@ -9,7 +9,7 @@ import { Study } from './screens/Study'
 import { Import } from './screens/Import'
 import { Settings } from './screens/Settings'
 
-type View = { name: 'today' } | { name: 'add' } | { name: 'import' } | { name: 'settings' } | { name: 'study'; firstCardId?: string; extra?: number }
+type View = { name: 'today' } | { name: 'add' } | { name: 'import' } | { name: 'settings' } | { name: 'study'; firstCardId?: string; extra?: number; mode?: StudyMode }
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -59,7 +59,7 @@ export default function App() {
       </header>
       {view.name === 'today' && (
         <Today
-          onStudy={(extra) => setView({ name: 'study', extra })}
+          onStudy={(extra, mode) => setView({ name: 'study', extra, mode })}
           onAdd={() => setView({ name: 'add' })}
           onImport={() => setView({ name: 'import' })}
         />
@@ -73,7 +73,7 @@ export default function App() {
       {view.name === 'settings' && <Settings onDone={() => setView({ name: 'today' })} />}
       {view.name === 'import' && <Import onDone={() => setView({ name: 'today' })} />}
       {view.name === 'study' && (
-        <Study firstCardId={view.firstCardId} extra={view.extra} onExit={() => setView({ name: 'today' })} />
+        <Study firstCardId={view.firstCardId} extra={view.extra} mode={view.mode} onExit={() => setView({ name: 'today' })} />
       )}
     </main>
   )

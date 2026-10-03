@@ -110,3 +110,7 @@ details summary { cursor: pointer; font-weight: 600; }
 .check { flex-direction: row; align-items: center; gap: 10px; color: var(--text); font-size: 1rem; min-height: 44px; }
 .check input { width: 20px; height: 20px; }
 input[type=range] { padding: 0; border: 0; background: none; accent-color: var(--accent); }
+.segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--note-bg); padding: 4px; border-radius: 14px; }
+.segmented button { min-height: 44px; background: transparent; color: var(--muted); font-weight: 600; border-radius: 10px; padding: 0 6px; }
+.segmented button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+.stat .label small { font-size: 0.75rem; }

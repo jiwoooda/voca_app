@@ -158,4 +158,27 @@ describe('오늘 학습 목록', () => {
     expect(new Set(pts)).toEqual(new Set(['meaning_to_expression']))
     expect(q.length).toBe(5)
   })
+
+  it('시작할 때 방향 선택: 그 방향 복습·신규만, 신규 한도는 단어 기준 공유', async () => {
+    await importRows(A, rows(20))
+    const pt = async (id: string) => (await db.query<any>('select prompt_type from cards where id=$1', [id])).rows[0].prompt_type
+    const q = (dir: string | null, now = T) =>
+      asUser<any>(db, A, 'select * from get_study_queue($1, 0, $2)', [now.toISOString(), dir]).then((r) => r.rows)
+    // 뜻→영어 모드로 w1 시작
+    const m2e = await q('meaning_to_expression')
+    expect(await pt(m2e[0].card_id)).toBe('meaning_to_expression')
+    await review(A, m2e[0].card_id)
+    // 영어→뜻 모드: 같은 날 w1의 짝 카드는 안 나오고, 신규 한도는 9 남음
+    const e2m = await q('expression_to_meaning')
+    expect(e2m.length).toBe(9)
+    for (const x of e2m) expect(await pt(x.card_id)).toBe('expression_to_meaning')
+    // 11분 뒤 영어→뜻 모드엔 w1 복습이 없고, 뜻→영어 모드엔 있음
+    const later = new Date(T.getTime() + 11 * 60_000)
+    expect((await q('expression_to_meaning', later)).some((x: any) => x.kind === 'review')).toBe(false)
+    expect((await q('meaning_to_expression', later))[0]).toEqual({ card_id: m2e[0].card_id, kind: 'review' })
+    // 다음 날 영어→뜻 모드: w1의 영→한 짝 카드가 신규로
+    const tomorrow = new Date(T.getTime() + 86_400_000)
+    const next = await q('expression_to_meaning', tomorrow)
+    expect(await Promise.all(next.map((x: any) => expr(x.card_id)))).toContain('w1')
+  })
 })

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiError, getCard, getSummary, loadQueue, revertReview, submitReview, type StudyCard } from '../lib/api'
+import { ApiError, getCard, getSummary, loadQueue, revertReview, submitReview, type StudyCard, type StudyMode } from '../lib/api'
 import { fmtTime, useOnline } from '../lib/useOnline'
 
 const RATINGS = [
@@ -9,7 +9,17 @@ const RATINGS = [
   { value: 4, label: '쉽게 기억', cls: 'easy' },
 ] as const
 
-export function Study({ firstCardId, extra = 0, onExit }: { firstCardId?: string; extra?: number; onExit: () => void }) {
+export function Study({
+  firstCardId,
+  extra = 0,
+  mode = null,
+  onExit,
+}: {
+  firstCardId?: string
+  extra?: number
+  mode?: StudyMode
+  onExit: () => void
+}) {
   const online = useOnline()
   const [queue, setQueue] = useState<StudyCard[] | null>(null)
   const [revealed, setRevealed] = useState(false)
@@ -23,14 +33,14 @@ export function Study({ firstCardId, extra = 0, onExit }: { firstCardId?: string
 
   const reload = useCallback(async (first?: string) => {
     try {
-      const q = await loadQueue(first, extra)
+      const q = await loadQueue(first, extra, mode)
       setQueue(q)
       if (q.length === 0) setNextDue((await getSummary()).next_due_at)
     } catch (e) {
       setError(`불러오지 못했어요: ${(e as Error).message}`)
       setQueue((prev) => prev ?? [])
     }
-  }, [extra])
+  }, [extra, mode])
 
   useEffect(() => {
     reload(firstCardId)

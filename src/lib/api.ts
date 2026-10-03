@@ -28,7 +28,12 @@ export interface Summary {
   next_due_at: string | null
   daily_new_limit: number
   new_paused_today: boolean
+  due_by_direction: Record<Direction, number>
 }
+
+export type Direction = 'expression_to_meaning' | 'meaning_to_expression'
+/** 학습 시작 시 선택: null = 섞어서 */
+export type StudyMode = Direction | null
 
 export class ApiError extends Error {
   code: string
@@ -92,8 +97,8 @@ const CARD_SELECT = 'id, version, state, due_at, introduced_at, prompt_type, ite
  * 오늘 학습 목록 (서버 계산): 기한이 된 복습 → 신규(개인 표현 우선, 일일 한도 내).
  * extra: 한도 도달 후 사용자가 직접 고른 추가 신규 수. firstCardId: '지금 학습'으로 고른 카드.
  */
-export async function loadQueue(firstCardId?: string, extra = 0): Promise<StudyCard[]> {
-  const ids = (check(await supabase.rpc('get_study_queue', { p_extra: extra })) as { card_id: string }[]).map(
+export async function loadQueue(firstCardId?: string, extra = 0, mode: StudyMode = null): Promise<StudyCard[]> {
+  const ids = (check(await supabase.rpc('get_study_queue', { p_extra: extra, p_direction: mode })) as { card_id: string }[]).map(
     (r) => r.card_id,
   )
   if (firstCardId && !ids.includes(firstCardId)) ids.unshift(firstCardId)
