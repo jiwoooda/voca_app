@@ -1,0 +1,9 @@
+# Supabase GitHub 연동이 main 브랜치 push 시 이 설정으로 배포한다.
+project_id = "ovkuserwlzcnfgxgnipv"
+
+[functions.review]
+enabled = true
+# 함수 코드에서 auth.getUser()로 직접 로그인 확인 (새 JWT 서명 키와 호환)
+verify_jwt = false
+entrypoint = "./functions/review/index.ts"
+import_map = "./functions/review/deno.json"

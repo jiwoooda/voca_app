@@ -7,8 +7,9 @@ import { Today } from './screens/Today'
 import { AddItem } from './screens/AddItem'
 import { Study } from './screens/Study'
 import { Import } from './screens/Import'
+import { Settings } from './screens/Settings'
 
-type View = { name: 'today' } | { name: 'add' } | { name: 'import' } | { name: 'study'; firstCardId?: string; extra?: number }
+type View = { name: 'today' } | { name: 'add' } | { name: 'import' } | { name: 'settings' } | { name: 'study'; firstCardId?: string; extra?: number }
 
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -47,9 +48,14 @@ export default function App() {
         <button className="brand link" onClick={() => setView({ name: 'today' })}>
           표현 노트
         </button>
-        <button className="link small" onClick={() => supabase.auth.signOut()}>
-          로그아웃
-        </button>
+        <span>
+          <button className="link small" onClick={() => setView({ name: 'settings' })}>
+            설정
+          </button>
+          <button className="link small" onClick={() => supabase.auth.signOut()}>
+            로그아웃
+          </button>
+        </span>
       </header>
       {view.name === 'today' && (
         <Today
@@ -64,6 +70,7 @@ export default function App() {
           onStudyNow={(id) => setView({ name: 'study', firstCardId: id })}
         />
       )}
+      {view.name === 'settings' && <Settings onDone={() => setView({ name: 'today' })} />}
       {view.name === 'import' && <Import onDone={() => setView({ name: 'today' })} />}
       {view.name === 'study' && (
         <Study firstCardId={view.firstCardId} extra={view.extra} onExit={() => setView({ name: 'today' })} />

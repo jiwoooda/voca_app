@@ -6,7 +6,7 @@ create extension if not exists pgcrypto;
 
 -- ───────────────────────── 테이블 ─────────────────────────
 
-create table public.user_settings (
+create table if not exists public.user_settings (
   user_id uuid primary key references auth.users (id) on delete cascade,
   daily_new_limit int not null default 10 check (daily_new_limit between 0 and 500),
   personal_new_limit int not null default 3 check (personal_new_limit between 0 and 500),
@@ -15,7 +15,7 @@ create table public.user_settings (
   updated_at timestamptz not null default now()
 );
 
-create table public.collections (
+create table if not exists public.collections (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   name text not null check (length(btrim(name)) between 1 and 100),
@@ -24,9 +24,9 @@ create table public.collections (
   created_at timestamptz not null default now()
 );
 -- 사용자당 '내 표현' 모음집은 하나
-create unique index collections_one_personal on public.collections (user_id) where kind = 'personal';
+create unique index if not exists collections_one_personal on public.collections (user_id) where kind = 'personal';
 
-create table public.items (
+create table if not exists public.items (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   collection_id uuid not null references public.collections (id) on delete cascade,
@@ -46,10 +46,10 @@ create table public.items (
   updated_at timestamptz not null default now(),
   unique (user_id, request_id)
 );
-create index items_user_norm on public.items (user_id, normalized_expression);
-create index items_collection on public.items (collection_id);
+create index if not exists items_user_norm on public.items (user_id, normalized_expression);
+create index if not exists items_collection on public.items (collection_id);
 
-create table public.cards (
+create table if not exists public.cards (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   item_id uuid not null references public.items (id) on delete cascade,
@@ -74,10 +74,10 @@ create table public.cards (
   updated_at timestamptz not null default now(),
   unique (item_id, prompt_type)
 );
-create index cards_due on public.cards (user_id, due_at) where introduced_at is not null and suspended_at is null;
-create index cards_new on public.cards (user_id, created_at) where introduced_at is null and suspended_at is null;
+create index if not exists cards_due on public.cards (user_id, due_at) where introduced_at is not null and suspended_at is null;
+create index if not exists cards_new on public.cards (user_id, created_at) where introduced_at is null and suspended_at is null;
 
-create table public.review_events (
+create table if not exists public.review_events (
   id uuid primary key,              -- 클라이언트 request_id. 재전송 시 중복 생성 방지
   user_id uuid not null references auth.users (id) on delete cascade,
   card_id uuid not null references public.cards (id) on delete cascade,
@@ -94,8 +94,8 @@ create table public.review_events (
   desired_retention numeric(4, 3) not null,
   reverted_at timestamptz
 );
-create index review_events_card on public.review_events (card_id, reviewed_at desc);
-create index review_events_user_time on public.review_events (user_id, reviewed_at);
+create index if not exists review_events_card on public.review_events (card_id, reviewed_at desc);
+create index if not exists review_events_user_time on public.review_events (user_id, reviewed_at);
 
 -- ───────────────────────── RLS ─────────────────────────
 -- 읽기는 본인 행만. 쓰기는 아래 함수(security definer)로만.
@@ -106,10 +106,15 @@ alter table public.items enable row level security;
 alter table public.cards enable row level security;
 alter table public.review_events enable row level security;
 
+drop policy if exists own_select on public.user_settings;
 create policy own_select on public.user_settings for select to authenticated using (user_id = auth.uid());
+drop policy if exists own_select on public.collections;
 create policy own_select on public.collections for select to authenticated using (user_id = auth.uid());
+drop policy if exists own_select on public.items;
 create policy own_select on public.items for select to authenticated using (user_id = auth.uid());
+drop policy if exists own_select on public.cards;
 create policy own_select on public.cards for select to authenticated using (user_id = auth.uid());
+drop policy if exists own_select on public.review_events;
 create policy own_select on public.review_events for select to authenticated using (user_id = auth.uid());
 
 revoke all on public.user_settings, public.collections, public.items, public.cards, public.review_events from anon, authenticated;

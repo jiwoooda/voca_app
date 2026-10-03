@@ -16,6 +16,7 @@ create table if not exists public.import_requests (
   created_at timestamptz not null default now()
 );
 alter table public.import_requests enable row level security;
+drop policy if exists own_select on public.import_requests;
 create policy own_select on public.import_requests for select to authenticated using (user_id = auth.uid());
 revoke all on public.import_requests from anon, authenticated;
 grant select on public.import_requests to authenticated;

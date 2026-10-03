@@ -28,10 +28,11 @@ beforeEach(async () => {
   db = await createDb()
   await addUser(db, A); await addUser(db, B)
   await asUser(db, A, 'select ensure_user_setup()')
+  await asUser(db, A, 'select update_my_settings(10, 3, 0.9)') // 설계서 예시 기준
 })
 
 describe('CSV 가져오기', () => {
-  it('3,000개 가져오기: 모두 미학습, 복습 0, 신규는 하루 10개만', async () => {
+  it('3,000개 가져오기: 모두 미학습, 복습 0, 신규는 하루 한도(10)만', async () => {
     const r = await importRows(A, rows(3000))
     expect(r.inserted).toBe(3000)
     const s = (await asUser<any>(db, A, 'select today_summary($1) as s', [T.toISOString()])).rows[0].s

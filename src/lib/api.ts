@@ -187,3 +187,39 @@ export async function submitReview(args: {
 export async function revertReview(eventId: string): Promise<{ status: string }> {
   return check(await supabase.rpc('revert_review', { p_event_id: eventId })) as { status: string }
 }
+
+export interface Settings {
+  daily_new_limit: number
+  personal_new_limit: number
+  desired_retention: number
+}
+
+export async function getSettings(): Promise<Settings> {
+  const s = check(await supabase.from('user_settings').select('daily_new_limit, personal_new_limit, desired_retention').single()) as Settings
+  return { ...s, desired_retention: Number(s.desired_retention) }
+}
+
+export async function saveSettings(s: Settings) {
+  check(
+    await supabase.rpc('update_my_settings', {
+      p_daily_new_limit: s.daily_new_limit,
+      p_personal_new_limit: s.personal_new_limit,
+      p_desired_retention: s.desired_retention,
+    }),
+  )
+}
+
+export interface Collection {
+  id: string
+  name: string
+  kind: 'personal' | 'imported'
+  is_active: boolean
+}
+
+export async function listCollections(): Promise<Collection[]> {
+  return check(await supabase.from('collections').select('id, name, kind, is_active').order('created_at')) as Collection[]
+}
+
+export async function setCollectionActive(id: string, active: boolean) {
+  check(await supabase.rpc('set_collection_active', { p_collection_id: id, p_active: active }))
+}
