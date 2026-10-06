@@ -1,6 +1,6 @@
 import Papa from 'papaparse'
 
-export const COLUMNS = ['expression', 'meaning', 'example', 'example_translation', 'note', 'source'] as const
+export const COLUMNS = ['expression', 'meaning', 'example', 'example_translation', 'note', 'source', 'phonetic'] as const
 export type CsvRow = { row: number } & Record<(typeof COLUMNS)[number], string>
 
 export interface ParsedCsv {
@@ -16,7 +16,7 @@ export interface ParsedCsv {
 export const normalize = (s: string) => s.trim().replace(/\s+/g, ' ').toLowerCase()
 
 const LIMITS: Record<string, number> = {
-  expression: 300, meaning: 1000, example: 2000, example_translation: 2000, note: 2000, source: 300,
+  expression: 300, meaning: 1000, example: 2000, example_translation: 2000, note: 2000, source: 300, phonetic: 200,
 }
 
 /** CSV 텍스트를 파싱·검사한다. 행 번호는 스프레드시트 기준(헤더 = 1행). */

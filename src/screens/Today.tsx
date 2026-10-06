@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getSummary, setNewPausedToday, type StudyMode, type Summary } from '../lib/api'
+import {
+  getCollectionProgress,
+  getSummary,
+  setNewPausedToday,
+  type CollectionProgress,
+  type StudyMode,
+  type Summary,
+} from '../lib/api'
 import { fmtTime } from '../lib/useOnline'
 
 const MODES: { value: StudyMode; label: string }[] = [
@@ -31,8 +38,17 @@ export function Today({
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [mode, setMode] = useState<StudyMode>(loadMode)
+  const [progress, setProgress] = useState<CollectionProgress[]>([])
 
-  const load = useCallback(() => getSummary().then(setS, (e) => setErr(String(e.message ?? e))), [])
+  const load = useCallback(async () => {
+    try {
+      const [sum, prog] = await Promise.all([getSummary(), getCollectionProgress()])
+      setS(sum)
+      setProgress(prog)
+    } catch (e) {
+      setErr(String((e as Error).message ?? e))
+    }
+  }, [])
   useEffect(() => {
     load()
   }, [load])
@@ -79,7 +95,7 @@ export function Today({
         <div className="stat">
           <span className="num">{s.due_reviews}</span>
           <span className="label">
-            오늘 복습 <small>(영→뜻 {s.due_by_direction?.expression_to_meaning ?? 0} · 뜻→영 {s.due_by_direction?.meaning_to_expression ?? 0})</small>
+            오늘 복습 <small>영→뜻 {s.due_by_direction?.expression_to_meaning ?? 0} · 뜻→영 {s.due_by_direction?.meaning_to_expression ?? 0}</small>
           </span>
         </div>
         <div className="stat">
@@ -126,6 +142,34 @@ export function Today({
         <button className="secondary" onClick={togglePause} disabled={busy}>
           {s.new_paused_today ? '오늘 새 단어 다시 학습하기' : '오늘 새 단어 쉬기 (복습만)'}
         </button>
+      )}
+      {progress.length > 0 && (
+        <div className="stack collections">
+          <h2 className="title">단어장 진행 상황</h2>
+          {progress.map((p) => {
+            const left = p.total - p.started
+            const pct = p.total ? Math.round((p.started / p.total) * 100) : 0
+            const days = s.daily_new_limit > 0 && p.kind === 'imported' && p.is_active && left > 0 ? Math.ceil(left / s.daily_new_limit) : null
+            return (
+              <div key={p.collection_id} className="collection">
+                <div className="progress-text">
+                  <strong>{p.name}</strong>
+                  <span>
+                    {p.started} / {p.total} ({pct}%)
+                  </span>
+                </div>
+                <div className="bar">
+                  <div style={{ width: `${pct}%` }} />
+                </div>
+                <p className="muted small">
+                  남은 단어 {left}개{days ? ` · 하루 ${s.daily_new_limit}개면 약 ${days}일` : ''}
+                  {p.started_today ? ` · 오늘 +${p.started_today}` : ''}
+                  {p.kind === 'imported' && !p.is_active ? ' · 학습 꺼짐' : ''}
+                </p>
+              </div>
+            )
+          })}
+        </div>
       )}
       <div className="row">
         <button className="secondary" onClick={onAdd}>표현 추가</button>

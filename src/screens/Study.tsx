@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ApiError, getCard, getSummary, loadQueue, revertReview, submitReview, type StudyCard, type StudyMode } from '../lib/api'
+import {
+  ApiError,
+  getCard,
+  getSummary,
+  loadQueue,
+  revertReview,
+  setItemPhonetic,
+  submitReview,
+  type StudyCard,
+  type StudyMode,
+} from '../lib/api'
+import { lookupPhonetic } from '../lib/phonetic'
+import { canSpeak, speak } from '../lib/speech'
 import { fmtTime, useOnline } from '../lib/useOnline'
 
 const RATINGS = [
@@ -28,6 +40,8 @@ export function Study({
   const [info, setInfo] = useState<string | null>(null)
   const [nextDue, setNextDue] = useState<string | null>(null)
   const [last, setLast] = useState<{ eventId: string; cardId: string; expression: string } | null>(null)
+  const [done, setDone] = useState(0) // 이번 학습에서 평가한 수
+  const [phonetics, setPhonetics] = useState<Record<string, string | null>>({})
   const requestId = useRef<string>(crypto.randomUUID()) // 같은 카드의 재시도는 같은 ID 사용
   const shownAt = useRef<number>(Date.now())
 
@@ -55,6 +69,31 @@ export function Study({
     shownAt.current = Date.now()
   }, [card?.id, card?.version])
 
+  // 발음 기호가 없고 아직 조회하지 않은 단어는 사전에서 가져와 저장
+  const item = card?.items
+  useEffect(() => {
+    if (!item || item.phonetic || item.phonetic_checked_at || item.id in phonetics) return
+    let cancelled = false
+    lookupPhonetic(item.expression).then(
+      async (p) => {
+        if (cancelled) return
+        setPhonetics((m) => ({ ...m, [item.id]: p }))
+        try {
+          await setItemPhonetic(item.id, p)
+        } catch {
+          /* 저장 실패해도 학습에는 영향 없음 */
+        }
+      },
+      () => {
+        /* 네트워크 오류: 다음에 다시 시도 */
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [item, phonetics])
+  const phonetic = item ? (item.phonetic ?? phonetics[item.id] ?? null) : null
+
   // 남은 카드가 없으면 다음 복습 시각에 다시 불러온다 (최대 30분 간격 확인)
   useEffect(() => {
     if (!queue || queue.length > 0 || !nextDue) return
@@ -77,6 +116,7 @@ export function Study({
         responseMs: Date.now() - shownAt.current,
       })
       setLast({ eventId: res.event_id, cardId: card.id, expression: card.items.expression })
+      setDone((d) => d + 1)
       // 저장 성공 후에만 다음 카드로
       const rest = queue!.slice(1)
       if (rest.length === 0) await reload()
@@ -108,6 +148,7 @@ export function Study({
         const restored = await getCard(last.cardId)
         setQueue((q) => [restored, ...(q ?? []).filter((c) => c.id !== restored.id)])
         setLast(null)
+        setDone((d) => Math.max(d - 1, 0))
       } else if (r.status === 'version_conflict') {
         setInfo('그 뒤에 다른 평가가 있어서 취소할 수 없어요.')
         setLast(null)
@@ -126,6 +167,15 @@ export function Study({
 
   return (
     <section className="stack">
+      <div className="progress" aria-label="진행 상황">
+        <div className="progress-text">
+          <span>완료 {done}</span>
+          <span>남은 카드 {queue.length}</span>
+        </div>
+        <div className="bar">
+          <div style={{ width: `${done + queue.length ? (done / (done + queue.length)) * 100 : 100}%` }} />
+        </div>
+      </div>
       {!online && <p className="notice error">오프라인 상태예요. 평가를 저장할 수 없어요.</p>}
       {info && <p className="notice">{info}</p>}
 
@@ -135,7 +185,7 @@ export function Study({
             {card.introduced_at ? '복습' : '새 카드'} · {card.prompt_type === 'expression_to_meaning' ? '영어 → 뜻' : '뜻 → 영어'}
           </p>
           {card.prompt_type === 'expression_to_meaning' ? (
-            <p className="expression">{card.items.expression}</p>
+            <Expression text={card.items.expression} phonetic={phonetic} />
           ) : (
             <p className="prompt">{card.items.meaning}</p>
           )}
@@ -144,9 +194,18 @@ export function Study({
               {card.prompt_type === 'expression_to_meaning' ? (
                 <p className="prompt">{card.items.meaning}</p>
               ) : (
-                <p className="expression">{card.items.expression}</p>
+                <Expression text={card.items.expression} phonetic={phonetic} autoPlay />
               )}
-              {card.items.example && <p className="example">{card.items.example}</p>}
+              {card.items.example && (
+                <p className="example">
+                  {card.items.example}
+                  {canSpeak && (
+                    <button className="speak small-speak" aria-label="예문 듣기" onClick={() => speak(card.items.example!)}>
+                      🔊
+                    </button>
+                  )}
+                </p>
+              )}
               {card.items.example_translation && <p className="muted">{card.items.example_translation}</p>}
               {card.items.note && <p className="note">{card.items.note}</p>}
             </div>
@@ -193,5 +252,23 @@ export function Study({
         </button>
       </div>
     </section>
+  )
+}
+
+function Expression({ text, phonetic, autoPlay = false }: { text: string; phonetic: string | null; autoPlay?: boolean }) {
+  // 뜻→영어 카드는 정답을 열 때 자동으로 한 번 읽어 준다
+  useEffect(() => {
+    if (autoPlay) speak(text)
+  }, [autoPlay, text])
+  return (
+    <div className="expression-row">
+      <p className="expression">{text}</p>
+      {canSpeak && (
+        <button className="speak" aria-label="발음 듣기" onClick={() => speak(text)}>
+          🔊
+        </button>
+      )}
+      {phonetic && <p className="phonetic">{phonetic}</p>}
+    </div>
   )
 }

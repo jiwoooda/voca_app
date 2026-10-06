@@ -8,6 +8,8 @@ export interface Item {
   example_translation: string | null
   note: string | null
   source: string | null
+  phonetic: string | null
+  phonetic_checked_at: string | null
 }
 
 export interface StudyCard {
@@ -91,7 +93,7 @@ export async function addPersonalItem(requestId: string, v: NewItem): Promise<st
   ) as string
 }
 
-const CARD_SELECT = 'id, version, state, due_at, introduced_at, prompt_type, items(id, expression, meaning, example, example_translation, note, source)'
+const CARD_SELECT = 'id, version, state, due_at, introduced_at, prompt_type, items(id, expression, meaning, example, example_translation, note, source, phonetic, phonetic_checked_at)'
 
 /**
  * 오늘 학습 목록 (서버 계산): 기한이 된 복습 → 신규(개인 표현 우선, 일일 한도 내).
@@ -230,4 +232,22 @@ export async function listCollections(): Promise<Collection[]> {
 
 export async function setCollectionActive(id: string, active: boolean) {
   check(await supabase.rpc('set_collection_active', { p_collection_id: id, p_active: active }))
+}
+
+export async function setItemPhonetic(itemId: string, phonetic: string | null) {
+  check(await supabase.rpc('set_item_phonetic', { p_item_id: itemId, p_phonetic: phonetic }))
+}
+
+export interface CollectionProgress {
+  collection_id: string
+  name: string
+  kind: 'personal' | 'imported'
+  is_active: boolean
+  total: number
+  started: number
+  started_today: number
+}
+
+export async function getCollectionProgress(): Promise<CollectionProgress[]> {
+  return check(await supabase.rpc('collection_progress')) as CollectionProgress[]
 }
